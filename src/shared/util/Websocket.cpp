@@ -1,6 +1,7 @@
 #include "Websocket.h"
 
 #include "util/Config.h"
+#include "util/EffectDatabase.h"
 #include "util/EffectHandler.h"
 
 std::string
@@ -129,6 +130,29 @@ Websocket::CallFunction (std::string text)
                 auto data = json.at ("data");
 
                 EffectHandler::HandleFunction (data);
+            }
+            else if (type == "randomEffect")
+            {
+                // Get a random effect
+                EffectBase *randomEffect = EffectDatabase::GetRandomEffect ();
+                if (randomEffect && randomEffect->CanActivate ())
+                {
+                    // Create effect data with random effect ID
+                    nlohmann::json effectData;
+                    effectData["effectID"] = randomEffect->GetID ();
+
+                    // Use provided duration or default to 30 seconds
+                    if (json.contains ("duration"))
+                    {
+                        effectData["duration"] = json["duration"];
+                    }
+                    else
+                    {
+                        effectData["duration"] = 1000 * 30; // Default 30 seconds
+                    }
+
+                    EffectHandler::HandleFunction (effectData);
+                }
             }
         }
     }
