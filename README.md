@@ -1,4 +1,4 @@
-# GTA Trilogy Chaos Mod: Reborn
+# GTA Trilogy Chaos Mod: Reborn 
 Welcome to the official **GTA Trilogy Chaos Mod: Reborn** repository!
 
 This repository, together with this README, is still very much **WIP**.
