@@ -69,6 +69,15 @@ ClearEffectsOnNewGame = true
 # Default: false
 QuickSave = false
 
+# Allow triggering random effects by pressing a hotkey
+# Default: true
+RandomEffectHotkey = true
+
+# Virtual key code for the random effect hotkey
+# Common values: VK_F8 (F8 key), VK_F9 (F9 key), VK_F10 (F10 key), etc.
+# Default: 119 (VK_F8)
+RandomEffectHotkeyKey = 119
+
 # Switch all vehicles to real game physics every tick
 # This will prevent vehicles on highways or other places to go absurdly fast whilst they're on their AI path
 # Default: true

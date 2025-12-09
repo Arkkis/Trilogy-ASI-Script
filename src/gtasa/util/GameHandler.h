@@ -3,6 +3,8 @@
 #include "util/BoneHelper.h"
 #include "util/CStuntJump.h"
 #include "util/Config.h"
+#include "util/EffectDatabase.h"
+#include "util/EffectHandler.h"
 #include "util/GameFixes.h"
 #include "util/GameUtil.h"
 #include "util/GlobalHooksInstance.h"
@@ -30,6 +32,7 @@ class GameHandler
         = std::chrono::steady_clock::now ();
     static inline std::chrono::steady_clock::time_point lastQuickSave
         = std::chrono::steady_clock::now ();
+    static inline bool lastRandomEffectKeyState = false;
 
     static inline CStuntJump *&currentStuntJump = *(CStuntJump **) 0xA9A88C;
 
@@ -120,6 +123,7 @@ public:
     {
         HandleAutoSave ();
         HandleQuickSave ();
+        HandleRandomEffectHotkey ();
 
         HandleVehicleToRealPhysics ();
         HandleParachutingWithoutParachuteFix ();
@@ -178,6 +182,41 @@ private:
             json["duration"] = 1000 * 10;
 
             EffectHandler::HandleFunction (json);
+        }
+    }
+
+    static void
+    HandleRandomEffectHotkey ()
+    {
+        if (!CONFIG ("Chaos.RandomEffectHotkey", true)) return;
+
+        int hotkey = CONFIG ("Chaos.RandomEffectHotkeyKey", VK_F8);
+
+        if (!FrontEndMenuManager.m_bMenuActive)
+        {
+            bool currentKeyState = KeyPressed (hotkey);
+
+            // Trigger only when key is released (was pressed, now not pressed)
+            if (lastRandomEffectKeyState && !currentKeyState)
+            {
+                EffectBase *randomEffect = EffectDatabase::GetRandomEffect ();
+                if (randomEffect && randomEffect->CanActivate ())
+                {
+                    nlohmann::json json;
+
+                    json["effectID"] = randomEffect->GetID ();
+                    json["duration"] = 1000 * 30; // Default 30 seconds
+
+                    EffectHandler::HandleFunction (json);
+                }
+            }
+
+            lastRandomEffectKeyState = currentKeyState;
+        }
+        else
+        {
+            // Reset state when menu is active to prevent triggering when menu closes
+            lastRandomEffectKeyState = false;
         }
     }
 

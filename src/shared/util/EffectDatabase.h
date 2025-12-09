@@ -22,4 +22,6 @@ public:
     static void RegisterEffect (EffectBase *base);
 
     static EffectBase *FindEffectById (std::string id);
+
+    static EffectBase *GetRandomEffect ();
 };
