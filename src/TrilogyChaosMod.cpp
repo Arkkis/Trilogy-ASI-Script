@@ -29,6 +29,7 @@ public:
 
         Config::Init ();
         Websocket::Setup ();
+        Websocket::SetupServer ();
 
         Events::initRwEvent += GameHandler::Initialise;
 

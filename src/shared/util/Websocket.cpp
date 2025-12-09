@@ -178,3 +178,39 @@ Websocket::SendCrowdControlResponse (int effectID, int status)
 
     SendWebsocketMessage (json);
 }
+
+void
+Websocket::SetupServer ()
+{
+    if (wsServer != nullptr) return; // Already initialized
+
+    // Network system already initialized in Setup(), but safe to call again
+    ix::initNetSystem ();
+
+    int port = DIRECT_WEBSOCKET_PORT;
+
+    wsServer = new ix::WebSocketServer (port, "127.0.0.1");
+
+    // Set callback for handling client messages
+    wsServer->setOnClientMessageCallback (
+        [] (std::shared_ptr<ix::ConnectionState> connectionState,
+            ix::WebSocket &webSocket, const ix::WebSocketMessagePtr &msg)
+        {
+            if (msg->type == ix::WebSocketMessageType::Message)
+            {
+                // Process message the same way as client messages
+                CallFunction (msg->str);
+            }
+        });
+
+    auto res = wsServer->listen ();
+    if (!res.first)
+    {
+        // Failed to start server
+        delete wsServer;
+        wsServer = nullptr;
+        return;
+    }
+
+    wsServer->start ();
+}

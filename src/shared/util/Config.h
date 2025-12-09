@@ -26,6 +26,13 @@ class Config
 # Default: 42069
 GUIWebsocketPort = 42069
 
+# Websocket port for direct connections (bypassing GUI)
+# External applications like Streamer.bot can connect directly to this port
+# Min: 1025
+# Max: 65535
+# Default: 42071
+DirectWebsocketPort = 42071
+
 # Effect sound volume between 0 and 100
 # Min: 0
 # Max: 100
