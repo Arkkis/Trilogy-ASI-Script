@@ -198,8 +198,73 @@ Websocket::SetupServer ()
         {
             if (msg->type == ix::WebSocketMessageType::Message)
             {
-                // Process message the same way as client messages
-                CallFunction (msg->str);
+                // Parse message to check if it's randomEffect (needs response)
+                try
+                {
+                    auto json = nlohmann::json::parse (msg->str);
+                    std::string type = json.value ("type", "");
+
+                    if (type == "randomEffect")
+                    {
+                        // Handle randomEffect with response
+                        EffectBase *randomEffect = EffectDatabase::GetRandomEffect ();
+                        nlohmann::json response;
+
+                        // Include request ID in response for correlation
+                        if (json.contains ("id"))
+                        {
+                            response["id"] = json["id"];
+                        }
+
+                        if (randomEffect && randomEffect->CanActivate ())
+                        {
+                            // Create effect data with random effect ID
+                            nlohmann::json effectData;
+                            effectData["effectID"] = randomEffect->GetID ();
+
+                            // Use provided duration or default to 30 seconds
+                            if (json.contains ("duration"))
+                            {
+                                effectData["duration"] = json["duration"];
+                            }
+                            else
+                            {
+                                effectData["duration"] = 1000 * 30; // Default 30 seconds
+                            }
+
+                            EffectHandler::HandleFunction (effectData);
+
+                            // Send success response
+                            response["type"]     = "randomEffectResponse";
+                            response["success"]  = true;
+                            response["effectID"] = randomEffect->GetID ();
+                            response["duration"] = effectData["duration"];
+                        }
+                        else
+                        {
+                            // Send failure response
+                            response["type"]    = "randomEffectResponse";
+                            response["success"] = false;
+                            response["reason"]  = randomEffect == nullptr
+                                                      ? "No effects available"
+                                                      : "Effect cannot activate";
+                        }
+
+                        // Send response back to client
+                        std::string responseStr = response.dump ();
+                        webSocket.send (responseStr);
+                    }
+                    else
+                    {
+                        // Process other message types normally (no response)
+                        CallFunction (msg->str);
+                    }
+                }
+                catch (...)
+                {
+                    // Invalid JSON, process normally
+                    CallFunction (msg->str);
+                }
             }
         });
 
