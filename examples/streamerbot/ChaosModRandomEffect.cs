@@ -138,8 +138,16 @@ public class CPHInline
                                             string effectID = GetJsonValue(responseStr, "effectID") ?? "unknown";
                                             string effectName = GetJsonValue(responseStr, "effectName") ?? effectID;
                                             
+                                            // Remove underscores and "effect" prefix from effect name for Streamer.bot
+                                            string displayName = effectName.Replace("_", " ");
+                                            // Remove "effect" from the start (case-insensitive)
+                                            if (displayName.Length >= 6 && displayName.Substring(0, 6).ToLower() == "effect")
+                                            {
+                                                displayName = displayName.Substring(6).TrimStart(' ', '_');
+                                            }
+                                            
                                             // Set effect name as a variable for Streamer.bot automation
-                                            CPH.SetGlobalVar("ChaosModLastEffectName", effectName, false);
+                                            CPH.SetGlobalVar("ChaosModLastEffectName", displayName, false);
                                             CPH.SetGlobalVar("ChaosModLastEffectID", effectID, false);
                                             
                                             CPH.LogInfo($"Chaos Mod: Success! Effect '{effectName}' (ID: {effectID}) triggered (Request ID: {requestId}).");
@@ -147,25 +155,35 @@ public class CPHInline
                                         }
                                         else
                                         {
+                                            // Set error status
+                                            CPH.SetGlobalVar("ChaosModLastEffectName", "error", false);
                                             string reason = GetJsonValue(responseStr, "reason") ?? "Unknown error";
                                             return (false, reason);
                                         }
                                     }
                                     else
                                     {
+                                        // Set error status
+                                        CPH.SetGlobalVar("ChaosModLastEffectName", "error", false);
                                         return (false, "Invalid response format");
                                     }
                                 }
                             }
                             catch (TaskCanceledException)
                             {
+                                // Set error status
+                                CPH.SetGlobalVar("ChaosModLastEffectName", "error", false);
                                 return (false, "Response timeout - no answer from mod");
                             }
 
                             // Close connection cleanly
                             await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Done", cts.Token);
+                            // Set error status
+                            CPH.SetGlobalVar("ChaosModLastEffectName", "error", false);
                             return (false, "No response received");
                         }
+                        // Set error status
+                        CPH.SetGlobalVar("ChaosModLastEffectName", "error", false);
                         return (false, $"Connection state: {client.State}");
                     }
                 }, cts.Token);
@@ -190,16 +208,26 @@ public class CPHInline
             catch (TaskCanceledException)
             {
                 CPH.LogWarn($"Chaos Mod: Attempt {attempt} (ID: {requestId}) - Connection timeout");
+                if (attempt == MAX_RETRIES)
+                {
+                    CPH.SetGlobalVar("ChaosModLastEffectName", "error", false);
+                }
                 if (attempt < MAX_RETRIES) Thread.Sleep(500);
             }
             catch (Exception ex)
             {
                 CPH.LogError($"Chaos Mod Error (attempt {attempt}, ID: {requestId}): {ex.GetType().Name} - {ex.Message}");
+                if (attempt == MAX_RETRIES)
+                {
+                    CPH.SetGlobalVar("ChaosModLastEffectName", "error", false);
+                }
                 if (attempt < MAX_RETRIES) Thread.Sleep(500);
             }
         }
 
         CPH.LogError($"Chaos Mod: All retry attempts failed (Request ID: {requestId}). Make sure game is running and mod is loaded.");
+        // Set error status after all retries failed
+        CPH.SetGlobalVar("ChaosModLastEffectName", "error", false);
         return false;
     }
 
