@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,6 +28,37 @@ public class CPHInline
     // Thread-safe request ID counter
     private static int requestIdCounter = 0;
 
+    // Simple helper to extract JSON string value
+    private static string GetJsonValue(string json, string key)
+    {
+        string searchKey = "\"" + key + "\":";
+        int keyIndex = json.IndexOf(searchKey);
+        if (keyIndex < 0) return null;
+        
+        int valueStart = keyIndex + searchKey.Length;
+        while (valueStart < json.Length && (json[valueStart] == ' ' || json[valueStart] == '\t'))
+            valueStart++;
+        
+        if (valueStart >= json.Length) return null;
+        
+        // String value (quoted)
+        if (json[valueStart] == '"')
+        {
+            int start = valueStart + 1;
+            int end = json.IndexOf('"', start);
+            if (end < 0) return null;
+            return json.Substring(start, end - start);
+        }
+        // Boolean or number value
+        else
+        {
+            int end = valueStart;
+            while (end < json.Length && json[end] != ',' && json[end] != '}' && json[end] != ' ')
+                end++;
+            return json.Substring(valueStart, end - valueStart).Trim();
+        }
+    }
+
     /// <summary>
     /// Triggers a random Chaos Mod effect
     /// </summary>
@@ -45,14 +74,7 @@ public class CPHInline
             try
             {
                 // Build the JSON message
-                var message = new Dictionary<string, object>
-                {
-                    ["type"] = "randomEffect",
-                    ["id"] = requestId,
-                    ["duration"] = durationMs
-                };
-
-                string jsonMessage = JsonSerializer.Serialize(message);
+                string jsonMessage = $"{{\"type\":\"randomEffect\",\"id\":{requestId},\"duration\":{durationMs}}}";
                 
                 if (attempt > 1)
                 {
@@ -64,7 +86,7 @@ public class CPHInline
                 }
 
                 var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                var task = Task.Run(async () =>
+                Task<(bool success, string message)> task = Task.Run(async () =>
                 {
                     using (var client = new ClientWebSocket())
                     {
@@ -74,12 +96,12 @@ public class CPHInline
                         if (client.State == WebSocketState.Open)
                         {
                             // Send message
-                            var bytes = Encoding.UTF8.GetBytes(jsonMessage);
-                            await client.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, cts.Token);
+                            byte[] sendBytes = Encoding.UTF8.GetBytes(jsonMessage);
+                            await client.SendAsync(new ArraySegment<byte>(sendBytes), WebSocketMessageType.Text, true, cts.Token);
                             CPH.LogDebug($"Chaos Mod: Message sent (ID: {requestId}), waiting for response...");
 
                             // Wait for response with timeout
-                            var responseBuffer = new byte[4096];
+                            byte[] responseBuffer = new byte[4096];
                             var responseCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(RESPONSE_TIMEOUT_MS));
                             
                             try
@@ -91,16 +113,16 @@ public class CPHInline
                                     string responseStr = Encoding.UTF8.GetString(responseBuffer, 0, result.Count);
                                     CPH.LogDebug($"Chaos Mod: Received response: {responseStr}");
 
-                                    // Parse response
-                                    var response = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(responseStr);
+                                    // Simple JSON parsing - extract values we need
+                                    string responseType = GetJsonValue(responseStr, "type");
                                     
-                                    if (response != null && response.ContainsKey("type") && 
-                                        response["type"].GetString() == "randomEffectResponse")
+                                    if (responseType == "randomEffectResponse")
                                     {
-                                        // Verify request ID matches (important for concurrent requests)
-                                        if (response.ContainsKey("id"))
+                                        // Verify request ID matches
+                                        string idStr = GetJsonValue(responseStr, "id");
+                                        if (idStr != null)
                                         {
-                                            int responseId = response["id"].GetInt32();
+                                            int responseId = int.Parse(idStr);
                                             if (responseId != requestId)
                                             {
                                                 CPH.LogWarn($"Chaos Mod: Response ID mismatch! Expected {requestId}, got {responseId}");
@@ -108,21 +130,24 @@ public class CPHInline
                                             }
                                         }
 
-                                        bool success = response.ContainsKey("success") && response["success"].GetBoolean();
+                                        string successStr = GetJsonValue(responseStr, "success");
+                                        bool success = successStr == "true";
                                         
                                         if (success)
                                         {
-                                            string effectID = response.ContainsKey("effectID") 
-                                                ? response["effectID"].GetString() 
-                                                : "unknown";
-                                            CPH.LogInfo($"Chaos Mod: Success! Effect '{effectID}' triggered (Request ID: {requestId}).");
-                                            return (true, "");
+                                            string effectID = GetJsonValue(responseStr, "effectID") ?? "unknown";
+                                            string effectName = GetJsonValue(responseStr, "effectName") ?? effectID;
+                                            
+                                            // Set effect name as a variable for Streamer.bot automation
+                                            CPH.SetGlobalVar("ChaosModLastEffectName", effectName, false);
+                                            CPH.SetGlobalVar("ChaosModLastEffectID", effectID, false);
+                                            
+                                            CPH.LogInfo($"Chaos Mod: Success! Effect '{effectName}' (ID: {effectID}) triggered (Request ID: {requestId}).");
+                                            return (true, effectName);
                                         }
                                         else
                                         {
-                                            string reason = response.ContainsKey("reason") 
-                                                ? response["reason"].GetString() 
-                                                : "Unknown error";
+                                            string reason = GetJsonValue(responseStr, "reason") ?? "Unknown error";
                                             return (false, reason);
                                         }
                                     }
@@ -145,15 +170,15 @@ public class CPHInline
                     }
                 }, cts.Token);
 
-                var (success, error) = task.Result;
+                (bool success, string message) result = task.Result;
 
-                if (success)
+                if (result.success)
                 {
                     return true;
                 }
                 else
                 {
-                    CPH.LogWarn($"Chaos Mod: Attempt {attempt} failed (ID: {requestId}) - {error}");
+                    CPH.LogWarn($"Chaos Mod: Attempt {attempt} failed (ID: {requestId}) - {result.message}");
                     
                     // Wait before retry (except on last attempt)
                     if (attempt < MAX_RETRIES)

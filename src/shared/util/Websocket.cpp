@@ -235,10 +235,11 @@ Websocket::SetupServer ()
                             EffectHandler::HandleFunction (effectData);
 
                             // Send success response
-                            response["type"]     = "randomEffectResponse";
-                            response["success"]  = true;
-                            response["effectID"] = randomEffect->GetID ();
-                            response["duration"] = effectData["duration"];
+                            response["type"]      = "randomEffectResponse";
+                            response["success"]   = true;
+                            response["effectID"]  = randomEffect->GetID ();
+                            response["effectName"] = randomEffect->GetMetadata ().name;
+                            response["duration"]  = effectData["duration"];
                         }
                         else
                         {

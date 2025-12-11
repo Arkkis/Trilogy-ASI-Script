@@ -8,6 +8,7 @@ This folder contains example code for integrating Trilogy Chaos Mod with Streame
 - ✅ **Automatic retry** - Retries up to 3 times if no response
 - ✅ **Request ID correlation** - Handles concurrent requests correctly
 - ✅ **Configurable duration** - Set via Streamer.bot global variable
+- ✅ **Effect name tracking** - Stores effect name in global variables for automation
 - ✅ **Error handling** - Comprehensive error logging
 
 ## Setup Instructions
@@ -56,6 +57,19 @@ To set a custom duration for effects:
    - **Value**: Duration in milliseconds (e.g., `60000` for 60 seconds)
 3. If not set, defaults to 30 seconds (30000 ms)
 
+### 6. Using Effect Name in Automation
+
+After an effect is triggered, the effect name is automatically stored in global variables that you can use in other Streamer.bot actions:
+
+- **`ChaosModLastEffectName`** - The display name of the last triggered effect (e.g., "Weather Change", "Spawn Vehicle")
+- **`ChaosModLastEffectID`** - The internal ID of the last triggered effect (e.g., "effect_weather")
+
+**Example Usage:**
+
+1. Create a follow-up action that reads `ChaosModLastEffectName`
+2. Use it in chat messages, TTS, OBS text sources, etc.
+3. Example: Send a chat message saying "Effect triggered: {ChaosModLastEffectName}"
+
 ## Usage Examples
 
 ### Basic Chat Command
@@ -98,6 +112,7 @@ To set a custom duration for effects:
   "id": 123,
   "success": true,
   "effectID": "effect_weather",
+  "effectName": "Weather Change",
   "duration": 30000
 }
 ```
