@@ -5,6 +5,10 @@
 #include "util/Version.h"
 #include "util/Websocket.h"
 
+#include <algorithm>
+#include <cctype>
+#include <string_view>
+
 std::string
 GenericUtil::GetModVersion ()
 {
@@ -101,4 +105,61 @@ GenericUtil::ToUpper (std::string string)
     std::transform (string.begin (), string.end (), string.begin (),
                     [] (unsigned char c) { return std::toupper (c); });
     return string;
+}
+
+std::string
+GenericUtil::FormatEffectName (std::string_view effectName)
+{
+    std::string name(effectName);
+
+    // Remove "effect_" prefix if present (for IDs)
+    if (name.length () >= 7 && name.substr (0, 7) == "effect_")
+    {
+        name = name.substr (7);
+    }
+    // Remove "effect " prefix if present (for display names with space)
+    else if (name.length () >= 7 && name.substr (0, 7) == "effect ")
+    {
+        name = name.substr (7);
+    }
+
+    // Replace underscores with spaces
+    std::replace (name.begin (), name.end (), '_', ' ');
+
+    // Trim leading/trailing whitespace
+    size_t start = name.find_first_not_of (" \t\n\r");
+    if (start != std::string::npos)
+    {
+        name.erase (0, start);
+        size_t end = name.find_last_not_of (" \t\n\r");
+        if (end != std::string::npos)
+        {
+            name.erase (end + 1);
+        }
+    }
+    else
+    {
+        name.clear ();
+    }
+
+    // Capitalize first letter of each word
+    bool capitalizeNext = true;
+    for (char &c : name)
+    {
+        if (capitalizeNext && std::islower (c))
+        {
+            c = std::toupper (c);
+            capitalizeNext = false;
+        }
+        else if (c == ' ')
+        {
+            capitalizeNext = true;
+        }
+        else
+        {
+            capitalizeNext = false;
+        }
+    }
+
+    return name;
 }

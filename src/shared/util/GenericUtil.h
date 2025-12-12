@@ -4,6 +4,7 @@
 
 #include <CMenuManager.h>
 #include <CTimer.h>
+#include <string_view>
 
 class GenericUtil
 {
@@ -34,4 +35,6 @@ public:
     }
 
     static std::string ToUpper (std::string string);
+
+    static std::string FormatEffectName (std::string_view effectName);
 };

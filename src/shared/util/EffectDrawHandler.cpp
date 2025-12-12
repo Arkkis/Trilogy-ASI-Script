@@ -53,18 +53,21 @@ EffectDrawHandler::CalculateDrawPosition ()
     if (Globals::enabledEffects["replace_all_text"])
         name = Globals::replaceAllTextString;
 
+    // Format the effect name for display
+    std::string formattedName = GenericUtil::FormatEffectName (name);
+
 #ifdef GTASA
     CFont::SetScaleForCurrentlanguage (TEXT_SCALE_X, TEXT_SCALE_Y);
     float renderWidth
-        = CFont::GetStringWidth (const_cast<char *> (name.data ()), true,
+        = CFont::GetStringWidth (const_cast<char *> (formattedName.c_str ()), true,
                                  false);
 #elif GTAVC
     CFont::SetScale (TEXT_SCALE_X, TEXT_SCALE_Y);
     float renderWidth = CFont::GetStringWidth (
-        (wchar_t *) std::wstring (name.begin (), name.end ()).c_str (), true);
+        (wchar_t *) std::wstring (formattedName.begin (), formattedName.end ()).c_str (), true);
 #elif GTA3
     CFont::SetScale (TEXT_SCALE_X, TEXT_SCALE_Y);
-    float renderWidth = CFont::GetStringWidth (name.data (), true);
+    float renderWidth = CFont::GetStringWidth (formattedName.c_str (), true);
 #endif
 
     x = GenericUtil::EaseOutBack (transitionTimer, -renderWidth, position);
@@ -76,7 +79,7 @@ EffectDrawHandler::CalculateDrawPosition ()
 
     if (Globals::enabledEffects["screensaver_hud"] && !CONFIG_CC_ENABLED)
     {
-        std::string effectName (effect->GetName ());
+        std::string effectName = GenericUtil::FormatEffectName (effect->GetName ());
         auto        element = positions[effectName];
 
         x = element.pos.x;
@@ -96,17 +99,20 @@ EffectDrawHandler::PrintEffectName ()
     if (Globals::enabledEffects["replace_all_text"])
         name = Globals::replaceAllTextString;
 
+    // Format the effect name (remove "effect" prefix, capitalize, etc.)
+    std::string formattedName = GenericUtil::FormatEffectName (name);
+
     if (drawLeft)
     {
         gamefont::Print (gamefont::LeftBottom, gamefont::AlignLeft,
-                         std::string (name), x, yLeft, FONT_DEFAULT,
+                         formattedName, x, yLeft, FONT_DEFAULT,
                          TEXT_SCALE_X, TEXT_SCALE_Y, GetTextColor (), 1,
                          GetDropShadowColor (), false);
     }
     else
     {
         gamefont::Print (gamefont::RightBottom, gamefont::AlignRight,
-                         std::string (name), x, yRight, FONT_DEFAULT,
+                         formattedName, x, yRight, FONT_DEFAULT,
                          TEXT_SCALE_X, TEXT_SCALE_Y, GetTextColor (), 1,
                          GetDropShadowColor (), false);
     }
@@ -417,7 +423,7 @@ EffectDrawHandler::Tick ()
 
     for (auto &effect : EffectHandler::GetActiveEffects ())
     {
-        std::string name (effect.GetName ());
+        std::string name = GenericUtil::FormatEffectName (effect.GetName ());
         if (!positions.contains (name))
         {
             positions[name] = CreateHUDElement (&effect);
