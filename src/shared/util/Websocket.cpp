@@ -187,7 +187,7 @@ Websocket::SendCrowdControlResponse (int effectID, int status)
 static std::string
 FormatEffectName (std::string_view effectId)
 {
-    std::string name = effectId;
+    std::string name(effectId);
 
     // Remove "effect_" prefix if present
     if (name.length () >= 7 && name.substr (0, 7) == "effect_")
