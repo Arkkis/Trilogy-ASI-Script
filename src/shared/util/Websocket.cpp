@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cctype>
 #include <string>
+#include <string_view>
 
 std::string
 Websocket::GetWebsocketURL ()
@@ -184,7 +185,7 @@ Websocket::SendCrowdControlResponse (int effectID, int status)
 }
 
 static std::string
-FormatEffectName (const std::string &effectId)
+FormatEffectName (std::string_view effectId)
 {
     std::string name = effectId;
 
