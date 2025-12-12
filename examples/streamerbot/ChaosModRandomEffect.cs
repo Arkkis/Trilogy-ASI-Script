@@ -138,16 +138,8 @@ public class CPHInline
                                             string effectID = GetJsonValue(responseStr, "effectID") ?? "unknown";
                                             string effectName = GetJsonValue(responseStr, "effectName") ?? effectID;
                                             
-                                            // Remove underscores and "effect" prefix from effect name for Streamer.bot
-                                            string displayName = effectName.Replace("_", " ");
-                                            // Remove "effect" from the start (case-insensitive)
-                                            if (displayName.Length >= 6 && displayName.Substring(0, 6).ToLower() == "effect")
-                                            {
-                                                displayName = displayName.Substring(6).TrimStart(' ', '_');
-                                            }
-                                            
                                             // Set effect name as a variable for Streamer.bot automation
-                                            CPH.SetGlobalVar("ChaosModLastEffectName", displayName, false);
+                                            CPH.SetGlobalVar("ChaosModLastEffectName", effectName, false);
                                             CPH.SetGlobalVar("ChaosModLastEffectID", effectID, false);
                                             
                                             CPH.LogInfo($"Chaos Mod: Success! Effect '{effectName}' (ID: {effectID}) triggered (Request ID: {requestId}).");

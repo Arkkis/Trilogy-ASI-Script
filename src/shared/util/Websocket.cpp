@@ -4,6 +4,10 @@
 #include "util/EffectDatabase.h"
 #include "util/EffectHandler.h"
 
+#include <algorithm>
+#include <cctype>
+#include <string>
+
 std::string
 Websocket::GetWebsocketURL ()
 {
@@ -179,6 +183,42 @@ Websocket::SendCrowdControlResponse (int effectID, int status)
     SendWebsocketMessage (json);
 }
 
+static std::string
+FormatEffectName (const std::string &effectId)
+{
+    std::string name = effectId;
+
+    // Remove "effect_" prefix if present
+    if (name.length () >= 7 && name.substr (0, 7) == "effect_")
+    {
+        name = name.substr (7);
+    }
+
+    // Replace underscores with spaces
+    std::replace (name.begin (), name.end (), '_', ' ');
+
+    // Capitalize first letter of each word
+    bool capitalizeNext = true;
+    for (char &c : name)
+    {
+        if (capitalizeNext && std::islower (c))
+        {
+            c = std::toupper (c);
+            capitalizeNext = false;
+        }
+        else if (c == ' ')
+        {
+            capitalizeNext = true;
+        }
+        else
+        {
+            capitalizeNext = false;
+        }
+    }
+
+    return name;
+}
+
 void
 Websocket::SetupServer ()
 {
@@ -238,7 +278,7 @@ Websocket::SetupServer ()
                             response["type"]      = "randomEffectResponse";
                             response["success"]   = true;
                             response["effectID"]  = randomEffect->GetID ();
-                            response["effectName"] = randomEffect->GetMetadata ().name;
+                            response["effectName"] = FormatEffectName (randomEffect->GetID ());
                             response["duration"]  = effectData["duration"];
                         }
                         else
